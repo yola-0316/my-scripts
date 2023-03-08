@@ -1,0 +1,84 @@
+#! /usr/bin/env python
+
+from argparse import ArgumentParser
+from os import listdir, scandir, sep
+from os.path import abspath, basename, isdir
+from typing import Dict, List, Tuple, ParamSpec
+
+
+parser = ArgumentParser(
+    prog='Tree',
+    description='Print tree structure of path specified.',
+    epilog='Written by HZ.Impact Studio.')
+
+parser.add_argument('DIR', default='.', nargs='?')
+parser.add_argument('-L', '--level', type=int, default=0)
+parser.add_argument('-f', '--limit')
+
+
+P = ParamSpec('P')
+
+def tree(entrydir: str, padding: str, is_last: bool = True, *args: P.args, **kwargs: P.kwargs):
+    path = abspath(entrydir)
+
+    if not isdir(entrydir.path):
+        return show_file(padding, entrydir, is_last)
+    show_dir(padding, entrydir, is_last)
+
+    padding += '  ' if is_last else '│ '
+
+    depth = kwargs.get('depth', 0)
+    level = kwargs.get('level', 0)
+    if level != 0 and depth >= level + 1:
+        return
+
+    limit_ = kwargs.get('limit', 100)
+    # original_limit = limit
+    if isinstance(limit_, list):
+        pass
+        limits = limit_
+    else:
+        limits = limit_.split(',')
+    # print(limits, depth)
+    limit = int(limits[depth] if depth < len(limits) else limits[-1])
+    # print(limits, limit, entrydir)
+    # return
+
+    files = [f for f in scandir(entrydir) if not f.name.startswith('.')]
+
+    for i, file in enumerate(files):
+        if limit == 0:
+            print(padding + '└─' + '... <additional files>')
+            break
+        # path = entrydir + sep + file.name
+        depth += 1
+        tree(file, padding, i == len(files) - 1, **{'depth': depth, 'level': level, 'limit': limits})
+        limit -= 1
+        depth -= 1
+
+
+def show_dir(padding: str, file: str, is_last: bool = True):
+    padding += '└─' if is_last else '├─'
+    name = basename(file.path)
+    print(padding + '\033[34m' + name + '/' + '\033[0m')
+
+
+def show_file(padding: str, file: str, is_last: bool = True):
+    padding += '└─' if is_last else '├─'
+    name = basename(file.path)
+    print(padding + '\033[92m' + name + '\033[0m')
+
+
+def main():
+    args = parser.parse_args()
+
+    for f in scandir(args.DIR):
+        tree(f, ' ', **vars(args))
+
+
+
+if __name__ == '__main__':
+    main()
+
+
+box_light_horizontal = 9472
