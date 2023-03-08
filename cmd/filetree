@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 
 from argparse import ArgumentParser
-from os import listdir, scandir, sep
+from os import scandir
 from os.path import abspath, basename, isdir
-from typing import Dict, List, Tuple, ParamSpec
+from typing import ParamSpec
 
 
 parser = ArgumentParser(
@@ -13,44 +13,31 @@ parser = ArgumentParser(
 
 parser.add_argument('DIR', default='.', nargs='?')
 parser.add_argument('-L', '--level', type=int, default=0)
-parser.add_argument('-f', '--limit')
+parser.add_argument('-f', '--limit', type=str, help='number or coma separated list of numbers', default='100')
 
 
 P = ParamSpec('P')
 
-def tree(entrydir: str, padding: str, is_last: bool = True, *args: P.args, **kwargs: P.kwargs):
-    path = abspath(entrydir)
-
+def tree(entrydir: any, padding: str, is_last: bool = True, *args: P.args, **kwargs: P.kwargs):
     if not isdir(entrydir.path):
         return show_file(padding, entrydir, is_last)
     show_dir(padding, entrydir, is_last)
 
     padding += '  ' if is_last else '│ '
 
+    level, limit = kwargs.get('level'), kwargs.get('limit')
     depth = kwargs.get('depth', 0)
-    level = kwargs.get('level', 0)
     if level != 0 and depth >= level + 1:
         return
 
-    limit_ = kwargs.get('limit', 100)
-    # original_limit = limit
-    if isinstance(limit_, list):
-        pass
-        limits = limit_
-    else:
-        limits = limit_.split(',')
-    # print(limits, depth)
+    limits = limit if isinstance(limit, list) else limit.split(',')
+
     limit = int(limits[depth] if depth < len(limits) else limits[-1])
-    # print(limits, limit, entrydir)
-    # return
-
-    files = [f for f in scandir(entrydir) if not f.name.startswith('.')]
-
-    for i, file in enumerate(files):
+    files = [f for f in scandir(entrydir.path) if not f.name.startswith('.')]
+    for i, file in enumerate(sort_files(files)):
         if limit == 0:
             print(padding + '└─' + '... <additional files>')
             break
-        # path = entrydir + sep + file.name
         depth += 1
         tree(file, padding, i == len(files) - 1, **{'depth': depth, 'level': level, 'limit': limits})
         limit -= 1
@@ -59,26 +46,38 @@ def tree(entrydir: str, padding: str, is_last: bool = True, *args: P.args, **kwa
 
 def show_dir(padding: str, file: str, is_last: bool = True):
     padding += '└─' if is_last else '├─'
-    name = basename(file.path)
-    print(padding + '\033[34m' + name + '/' + '\033[0m')
+    print(padding + '\033[34m' + file.name + '/' + '\033[0m')
 
 
 def show_file(padding: str, file: str, is_last: bool = True):
     padding += '└─' if is_last else '├─'
-    name = basename(file.path)
-    print(padding + '\033[92m' + name + '\033[0m')
+    print(padding + '\033[92m' + file.name + '\033[0m')
+
+
+def sort_files(files: list):
+    dirs = [d for d in files if d.is_dir()]
+    files = [f for f in files if not f.is_dir()]
+    dirs = sorted(dirs, key=lambda x: x.name)
+    files = sorted(files, key=lambda x: x.name)
+    return dirs + files
 
 
 def main():
     args = parser.parse_args()
 
-    for f in scandir(args.DIR):
-        tree(f, ' ', **vars(args))
+    class Entry:
+        name = ''
+        path = ''
 
+    entry = Entry
+    entry.name = basename(args.DIR)
+    entry.path = abspath(args.DIR)
+    tree(entry, '', **vars(args))
 
 
 if __name__ == '__main__':
     main()
 
 
-box_light_horizontal = 9472
+# for semantic box drawing
+# box_light_horizontal = 9472
