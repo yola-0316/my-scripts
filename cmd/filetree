@@ -14,6 +14,7 @@ parser = ArgumentParser(
 parser.add_argument('DIR', default='.', nargs='?')
 parser.add_argument('-L', '--level', type=int, default=0)
 parser.add_argument('-f', '--limit', type=str, help='number or coma separated list of numbers', default='100')
+parser.add_argument('--version', action='version', version='%(prog)s 0.1.0')
 
 
 P = ParamSpec('P')
@@ -39,7 +40,7 @@ def tree(entrydir: any, padding: str, is_last: bool = True, *args: P.args, **kwa
             print(padding + '└─' + '... <additional files>')
             break
         depth += 1
-        tree(file, padding, i == len(files) - 1, **{'depth': depth, 'level': level, 'limit': limits})
+        tree(file, padding, i == len(files) - 1, **{'depth': depth, 'limit': limits, **kwargs})
         limit -= 1
         depth -= 1
 
